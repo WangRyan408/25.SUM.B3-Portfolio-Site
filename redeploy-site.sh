@@ -7,6 +7,8 @@ SESSION_NAME="portfolio_site"
 
 set -e
 
+#pkill flask
+
 tmux kill-server || echo "No active tmux server to kill."
 
 echo "Changing to project directory: $PROJECT_DIR"
@@ -24,12 +26,6 @@ pip install -r requirements.txt
 
 deactivate
 
-echo "Starting new detached tmux session named '$SESSION_NAME'..."
-tmux new-session -d -s "$SESSION_NAME"
-
-
-tmux send-keys -t "$SESSION_NAME" "cd '$PROJECT_DIR'" C-m
-
-tmux send-keys -t "$SESSION_NAME" "source '$VENV_DIR/bin/activate'" C-m
-
-tmux send-keys -t "$SESSION_NAME" "gunicorn --bind 0.0.0.0:5000 app:app" C-m
+echo "Restarting myportfolio.service"
+systemctl restart myportfolio
+systemctl status myportfolio
