@@ -34,7 +34,7 @@ For each of these tasks, you should create an [Issue](https://docs.github.com/en
 
 NOTICE: Map on travel page cannot initialize due to issues creating account/acquiring API token. 
 
-Hosting site at: https://two5-sum-b3-portfolio-site.onrender.com/
+Hosting site at: [http://25-sum-b3-ryan.duckdns.org:5000/](http://25-sum-b3-ryan.duckdns.org:5000/)
 
 ## Installation
 
