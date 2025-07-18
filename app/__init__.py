@@ -1,19 +1,28 @@
+
 import os
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, abort
 from dotenv import load_dotenv
 from peewee import *
 import datetime
 from playhouse.shortcuts import model_to_dict
+import re
 
 load_dotenv()
 app = Flask(__name__)
 
-mydb = MySQLDatabase(os.getenv("MYSQL_DATABASE"),
-	user=os.getenv("MYSQL_USER"),
-	password=os.getenv("MYSQL_PASSWORD"),
-	host=os.getenv("MYSQL_HOST"),
-	port=3306
-)
+
+# only use temporary in-memory instance of databse when testing
+if os.getenv("TESTING") == "true":
+    print("Running in test mode")
+    mydb = SqliteDatabase('file:memory?mode=memory&cache=shared', uri=True)
+else:
+    # otherwise use real production MySQL database
+    mydb = MySQLDatabase(os.getenv("MYSQL_DATABASE"),
+	    user=os.getenv("MYSQL_USER"),
+	    password=os.getenv("MYSQL_PASSWORD"),
+	    host=os.getenv("MYSQL_HOST"),
+	    port=3306
+    )
 
 class TimelinePost(Model):
 	name = CharField()
@@ -92,12 +101,36 @@ def timeline():
 
 @app.route('/api/timeline_post', methods=['POST'])
 def post_time_line_post():
-	name = request.form['name']
-	email = request.form['email']
-	content = request.form['content']
-	timeline_post = TimelinePost.create(name=name, email=email, content=content)
-
-	return model_to_dict(timeline_post)
+    try:
+        name = request.form['name']
+        email = request.form['email']
+        content = request.form['content']
+        
+        # check if name is empty
+        if(not name):
+            raise ValueError("Invalid name")
+        # check if content is empty
+        if(not content):
+            raise ValueError("Invalid content")
+        
+        # email regex
+        # check if it is an invalid email or empty email
+        email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        is_valid_email = re.match(email_regex, email) is not None
+        if(not is_valid_email):
+            raise ValueError("Invalid email")
+        
+        # otherwise create timeline post
+        timeline_post = TimelinePost.create(name=name, email=email, content=content)
+        
+        return model_to_dict(timeline_post), 200
+    except ValueError as e:
+        return f"{e}", 400
+    except Exception as e:
+        return "An unexpected error occurred internally.", 500
+    
+    
+        
 
 @app.route('/api/timeline_post', methods=['GET'])
 def get_time_line_post():
