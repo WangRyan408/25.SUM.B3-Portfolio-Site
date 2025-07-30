@@ -39,12 +39,12 @@
             <div class="nav-bar">
                 <nav id="nav">
                     <ul>
-                        <li class="nav-element"><a href="{{ url }}/about" data-route="about"><i class="fa-solid fa-person"></i> About</a></li>
-                        <li class="nav-element"><a href="{{ url }}/experience" data-route="experience"><i class="fa-solid fa-suitcase"></i> Experience</a></li>
-                        <li class="nav-element"><a href="{{ url }}/education" data-route="education"><i class="fa-solid fa-graduation-cap"></i> Education</a></li>
-                        <li class="nav-element"><a href="{{ url }}/hobbies" data-route="hobbies"><i class="fa-solid fa-heart"></i> Hobbies</a></li>
-                        <li class="nav-element"><a href="{{ url }}/travel" data-route="travel"><i class="fa-solid fa-location-dot"></i> Travel</a></li>
-                        <li class="nav-element"><a href="{{ url }}/timeline" data-route="timeline"><i class="fa-solid fa-clock"></i> Timeline</a></li>
+                        <li class="nav-element"><a href="/about" data-route="about"><i class="fa-solid fa-person"></i> About</a></li>
+                        <li class="nav-element"><a href="/experience" data-route="experience"><i class="fa-solid fa-suitcase"></i> Experience</a></li>
+                        <li class="nav-element"><a href="/education" data-route="education"><i class="fa-solid fa-graduation-cap"></i> Education</a></li>
+                        <li class="nav-element"><a href="/hobbies" data-route="hobbies"><i class="fa-solid fa-heart"></i> Hobbies</a></li>
+                        <li class="nav-element"><a href="/travel" data-route="travel"><i class="fa-solid fa-location-dot"></i> Travel</a></li>
+                        <li class="nav-element"><a href="/timeline" data-route="timeline"><i class="fa-solid fa-clock"></i> Timeline</a></li>
                     </ul>
                 </nav>
             </div>
@@ -55,7 +55,7 @@
             {{ initial_content|safe }}
         {% else %}
             <div class="section-content">
-                <h2>Welcome to Our Portfolio</h2>
+                <h2>Welcome to Our Portfolio (Midway Check-in Change)</h2>
                 <p>Select a navigation item above to explore our team's background, experience, and interests.</p>
                 <p>Use the menu to learn more about:</p>
                 <ul>
@@ -98,16 +98,27 @@
                     method: 'POST',
                     body: formData
                 })
-                .then(response => response.json())
+                .then(response => {
+                    if (response.status === 429) {
+                        showMessage('Rate limit exceeded. Please wait a moment before posting again.', 'warning');
+                        return;
+                    }
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
-                    // Clear form
-                    form.reset();
-                    
-                    // Show success message
-                    showMessage('Post submitted successfully!', 'success');
-                    
-                    // Reload posts
-                    loadPosts();
+                    if (data) {
+                        // Clear form
+                        form.reset();
+                        
+                        // Show success message
+                        showMessage('Post submitted successfully!', 'success');
+                        
+                        // Reload posts
+                        loadPosts();
+                    }
                 })
                 .catch(error => {
                     console.error('Error:', error);
@@ -129,10 +140,21 @@
                     fetch('/api/timeline_post', {
                         method: 'DELETE'
                     })
-                    .then(response => response.json())
+                    .then(response => {
+                        if (response.status === 429) {
+                            showMessage('Rate limit exceeded. Please wait a moment before trying again.', 'warning');
+                            return;
+                        }
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
                     .then(data => {
-                        showMessage('Post deleted successfully!', 'success');
-                        loadPosts();
+                        if (data) {
+                            showMessage('Post deleted successfully!', 'success');
+                            loadPosts();
+                        }
                     })
                     .catch(error => {
                         console.error('Error:', error);
@@ -148,9 +170,24 @@
             // Function to load posts
             function loadPosts() {
                 fetch('/api/timeline_post')
-                .then(response => response.json())
+                .then(response => {
+                    if (response.status === 429) {
+                        postsContainer.innerHTML = '<div class="rate-limit-message">Rate limit exceeded. Posts will load automatically in a moment...</div>';
+                        // Retry after a delay
+                        setTimeout(() => {
+                            loadPosts();
+                        }, 5000);
+                        return;
+                    }
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
-                    displayPosts(data.timeline_posts);
+                    if (data) {
+                        displayPosts(data.timeline_posts);
+                    }
                 })
                 .catch(error => {
                     console.error('Error loading posts:', error);
@@ -190,8 +227,18 @@
             function showMessage(message, type) {
                 const messageDiv = document.createElement('div');
                 messageDiv.className = `message message-${type}`;
+                
+                let icon;
+                if (type === 'success') {
+                    icon = 'check-circle';
+                } else if (type === 'warning') {
+                    icon = 'clock';
+                } else {
+                    icon = 'exclamation-triangle';
+                }
+                
                 messageDiv.innerHTML = `
-                    <i class="fa-solid fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}"></i>
+                    <i class="fa-solid fa-${icon}"></i>
                     ${message}
                 `;
                 
@@ -200,10 +247,11 @@
                 if (formContainer) {
                     formContainer.insertBefore(messageDiv, formContainer.firstChild);
                     
-                    // Remove message after 5 seconds
+                    // Remove message after longer time for warning messages
+                    const timeout = type === 'warning' ? 8000 : 5000;
                     setTimeout(() => {
                         messageDiv.remove();
-                    }, 5000);
+                    }, timeout);
                 }
             }
             
@@ -346,8 +394,8 @@
                     e.preventDefault(); 
                     
                     const route = this.getAttribute('data-route');
-                    const baseUrl = '{{ url }}';
-                    const url = baseUrl.startsWith('http') ? `${baseUrl}/${route}` : `http://${baseUrl}/${route}`;
+                    //const baseUrl = '{{ url }}';
+                    const url = `/${route}`;
                     
                     navLinks.forEach(l => l.parentElement.classList.remove('active'));
                     this.parentElement.classList.add('active');
@@ -389,8 +437,8 @@
             window.addEventListener('popstate', function(e) {
                 if (e.state && e.state.route) {
                     const route = e.state.route;
-                    const baseUrl = '{{ url }}';
-                    const url = baseUrl.startsWith('http') ? `${baseUrl}/${route}` : `http://${baseUrl}/${route}`;
+                    //const baseUrl = '{{ url }}';
+                    const url = `/${route}`;
                     
                     navLinks.forEach(l => l.parentElement.classList.remove('active'));
                     const activeLink = document.querySelector(`[data-route="${route}"]`);
